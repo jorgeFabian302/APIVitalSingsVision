@@ -80,6 +80,19 @@ def create_user():
     }
     return jsonify(result)
 
+# @app.route('/pacientes/<id>', methods=['GET'])
+# def paciente(id):
+#     s = session()
+#     paciente = s.query(Paciente).filter(Paciente.IdPaciente == id).first()
+#     result = {
+#         'error' : None, 
+#         'data' : paciente.to_dict(),
+#         'status' : 'success',
+#         'message' : 'Paciente recuperado con exito', 
+#         'code' : 200
+#     }
+#     return jsonify(result)
 
 if __name__ == '__main__':
     app.run(debug=True)
+
