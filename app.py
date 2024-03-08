@@ -58,23 +58,24 @@ def users():
 
 @app.route('/user/Insert', methods=['POST'])
 def create_user():
-    s = session()
+    s_sesion = session()
     data = request.json
     user = User(
         IdUser=data['IdUser'],
         Nombre=data['Nombre'],
-        ApellidoPaterno=data['ApellidoPaterno'],
-        ApellidoMaterno=data['ApellidoMaterno'],
+        Apellidos=data['Apellidos'],
+        Correo=data['Correo'],
+        Password=data['Password'],  
         FechaNacimiento=data['FechaNacimiento'],
-        Password=data['Password']  # hash
+        FotoPerfil=data['FotoPErfil']# hash 
     )
-    s.add(user)
-    s.commit()
+    s_sesion.add(user)
+    s_sesion.commit()
     result = {
         'error': None,
         'data': user.to_dict(),
         'status': 'success',
-        'message': 'Paciente creado con exito',
+        'message': 'Usuario creado con exito',
         'code': 201
     }
     return jsonify(result)
