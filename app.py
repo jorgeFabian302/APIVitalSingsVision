@@ -257,5 +257,30 @@ def get_consulta(id):
     return jsonify(result)
 
 
+#consulta de los pacientes que sean de un doctor
+@app.route('/pacientesDoctor/<id>', methods=['GET'])
+
+def get_pacientesdoctor(id):
+    s = session()
+    pacientes = s.query(Paciente).filter(Paciente.IdPaciente == id).all()
+    result_list = []
+    for pariente in pacientes:
+        result_list.append(pariente.paciente.to_dict())
+
+    result_pacientes = {
+        'pacientes': result_list,
+        'total': len(pacientes),
+    }
+
+    result = {
+        'error': None,
+        'data': result_pacientes,
+        'status': 'success',
+        'message': 'Pacientes recuperados con exito',
+        'code': 200
+    }
+
+    return jsonify(result)
+
 if __name__ == '__main__':
     app.run(debug=True, port=4000)
