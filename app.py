@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models.User import User, Paciente, Familiar, Pariente
+from models.User import User, Paciente, Familiar, Pariente, RevisionCardiaca, Consulta
 from datetime import datetime
 # Creamos el local host para para poder utilizar la API
 
@@ -219,6 +219,43 @@ def familiares():
     }
 
     return jsonify(result)
+
+
+
+#Consulta de los tablas de Revision Cardiaca Mandando Id del Paciente
+@app.route('/getRevisionCardiacaById/<id>', methods=['GET'])
+
+def get_revision_cardiaca(id):
+    s = session()
+    revisioncardiaca = s.query(RevisionCardiaca).filter(RevisionCardiaca.IdRevisionCa == id).first()
+
+    result = {
+        'error' : None, 
+        'data' : revisioncardiaca.to_dict(),
+        'status' : 'success',
+        'message' : 'Revision Cardiaca recuperada con exito', 
+        'code' : 200
+    }
+    return jsonify(result)
+
+
+#Funciona Si y solo Si "HoraConsulta" esta como String
+#Consulta de la tablas Consulta by Id del Paciente
+@app.route('/getConsultaById/<id>', methods=['GET'])
+
+def get_consulta(id):
+    s = session()
+    consulta = s.query(Consulta).filter(Consulta.IdFPaciente == id).first()
+
+    result = {
+        'error' : None, 
+        'data' : consulta.to_dict(),
+        'status' : 'success',
+        'message' : 'Consulta recuperada con exito', 
+        'code' : 200
+    }
+    return jsonify(result)
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=4000)

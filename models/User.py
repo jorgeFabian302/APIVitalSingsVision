@@ -162,25 +162,30 @@ class Consulta(Base):
 
     IdConsulta = Column(String, primary_key=True)
     FechaConsulta = Column(Date)
-    HoraConsulta = Column(DateTime)
+    HoraConsulta = Column(String)
+    #HoraConsulta = Column(DateTime)
     IdFDoctor = Column(String, ForeignKey('Doctor.IdDoctor'))
     IdFPaciente = Column(String, ForeignKey('Paciente.IdPaciente'))
     IdFRevisionCa = Column(String, ForeignKey('RevisionCardiaca.IdRevisionCa'))
     Estado = Column(String)
     FrecuenciaCardiaca = Column(Float)
-    
-    #user = relationship("User")
+    doctor = relationship("Doctor")
+    paciente = relationship("Paciente")
+    revisionCardiaca = relationship("RevisionCardiaca")
 
     def to_dict(self):
-
+        #hora_consulta = self.HoraConsulta.strftime("%h:%m:%s") if self.HoraConsulta else None
         return {
             "IdConsulta" : self.IdConsulta,
             "FechaConsulta" : self.FechaConsulta,
-            "HoraConsulta" : self.HoraConsulta,
+            #"HoraConsulta" : hora_consulta,
+             "HoraConsulta" : self.HoraConsulta,
             "IdFDoctor" : self.IdFDoctor,
             "IdFPaciente" : self.IdFPaciente,
             "IdFRevisionCa" : self.IdFRevisionCa,
             "Estado" : self.Estado,
             "FrecuenciaCardiaca" : self.FrecuenciaCardiaca,
-            #"user": self.user.to_dict()
+            "doctor" : self.doctor.to_dict(),
+            "paciente" : self.paciente.to_dict(),
+            "revisionCardiaca" : self.revisionCardiaca.to_dict(),
         }
