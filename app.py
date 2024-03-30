@@ -343,29 +343,28 @@ def revisioncardiacaUltimasesion():
     return jsonify(result)
         
 # ultima consulta realizada al paciente
-
-
-
-@app.route('/consulta/ultimasesion', methods=['GET'])
+@app.route('/consulta/ultimasesion', methods=['POST'])
 def consultaultimasesion():
     s = session()
-    li_familiares = s.query(Consulta).all()
-    result_list = []
-    for familiar in li_familiares:
-        result_list.append(familiar.to_dict())
-
-    result_familiares = {
-        'familiares': result_list,
-        'total': len(li_familiares),
-    }
-
-    result = {
-        'error': None,
-        'data': result_familiares,
-        'status': 'success',
-        'message': 'Familiares recuperados con exito',
-        'code': 200
-    }
+    data = request.json
+    consultaList = s.query(Consulta).filter(Consulta.IdFPaciente == data['IdFPaciente']).all()
+    if consultaList:
+        ulitmaconsulta = consultaList[len(consultaList) - 1]
+        result  = {
+            'error': None,
+            'consulta': ulitmaconsulta.to_dict(),
+            'status': 'success',
+            'message': 'consulta enviada con exito',
+            'code': 200
+        }
+    else:
+        result = {
+            'error': 'consulta no encontrada',
+            'consulta': None,
+            'status': 'error',
+            'message': 'consulta no encontrada',
+            'code': 404
+        }
     return jsonify(result)
 
 
