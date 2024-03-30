@@ -39,7 +39,7 @@ class Paciente(Base):
         return {
             "IdPaciente": self.IdPaciente,
             "NumeroSeguroSocial": self.NumeroSeguroSocial,
-            "user": self.user.to_dict()
+            "data": self.user.to_dict()
         }
 
 class Familiar(Base):
@@ -54,7 +54,7 @@ class Familiar(Base):
         return {
             "IdFamiliar": self.IdFamiliar,
             "NumeroTelefono": self.NumeroTelefono,
-            "user": self.user.to_dict()
+            "data": self.user.to_dict()
         }
 
 class Pariente(Base):
@@ -94,7 +94,7 @@ class Roles(Base):
             "RolPaciente" : self.RolPaciente,
             "RolDoctor" : self.RolDoctor,
             "RolFamiliar" : self.RolFamiliar,
-            "user": self.user.to_dict()
+            "data": self.user.to_dict()
         }
     
 
@@ -113,7 +113,7 @@ class Doctor(Base):
             "IdDoctor" : self.IdDoctor,
             "Cedula" : self.Cedula,
             "Especialidad" : self.Especialidad,
-            "user": self.user.to_dict()
+            "data": self.user.to_dict()
         }
     
 class RevisionCardiaca(Base):

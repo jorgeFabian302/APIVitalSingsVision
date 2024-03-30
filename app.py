@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models.User import User, Paciente, Familiar, Pariente
+from models.User import User, Paciente, Familiar, Pariente, Roles, Doctor, RevisionCardiaca, Consulta
 from datetime import datetime
 # Creamos el local host para para poder utilizar la API
 
@@ -56,12 +56,23 @@ def users_by_id(id):
     }
     return jsonify(result)
 
-#Crear un usuario
+
+# Contar el total de usuarios de que contiene la tabla User
+@app.route('/user/count', methods=['GET'])
+def count_users():
+    s_sesion = session()
+    li_pacientes = s_sesion.query(Paciente).all()
+    result= {
+        'total': len(li_pacientes),
+    }
+    return jsonify(result)
+
+
+# Crear un usuario
 @app.route('/user/Insert', methods=['POST'])
 def create_user():
     s_sesion = session()
     data = request.json
-
     date_birth = data['FechaNacimiento']
     # year-month-day parse to datetime
     date_birth = datetime.strptime(date_birth, '%Y-%m-%d')
@@ -127,11 +138,10 @@ def paciente(id):
     return jsonify(result)
 
 #Crea un paciente
-@app.route('/paciente/Insert', methods=['POST'])
+@app.route('/Paciente/Insert', methods=['POST'])
 def create_paciente():
     s_sesion = session()
     data = request.json
-
     paciente = Paciente(
         IdPaciente = data['IdPaciente'],
         NumeroSeguroSocial = data['NumeroSeguroSocial'],
@@ -147,7 +157,70 @@ def create_paciente():
     }
     return jsonify(result)
 
-#Loguin de los Usuarios
+# Crea un usuario doctor
+@app.route('/Doctor/Insert', methods=['POST'])
+def create_doctor():
+    s_sesion = session()
+    data = request.json
+    doctor = Doctor(
+        IdDoctor = data['IdDoctor'],
+        Cedula = data['Cedula'],
+        Especialidad = data['Especialidad']
+    )
+    s_sesion.add(doctor)
+    s_sesion.commit()
+    result = {
+        'error': None,
+        'data': doctor.to_dict(),
+        'status': 'success',
+        'message': 'Doctor creado con exito',
+        'code': 201
+    }
+    return jsonify(result)
+
+# Crea un usuario familiar
+@app.route('/familiar/Insert', methods=['POST'])
+def create_familiar():
+    s_sesion = session()
+    data = request.json
+    familiar = Familiar(
+        IdFamiliar = data['IdFamiliar'],
+        NumeroTelefono = data['NumeroTelefono'],
+    )
+    s_sesion.add(familiar)
+    s_sesion.commit()
+    result = {
+        'error': None,
+        'data': familiar.to_dict(),
+        'status': 'success',
+        'message': 'Familiar creado con exito',
+        'code': 201
+    }
+    return jsonify(result)
+
+# Agregamos el rol del usuario creado
+@app.route('/Roles/Insert', methods=['POST'])
+def create_roles():
+    s_sesion = session()
+    data = request.json
+    roles = Roles(
+        IdUser= data['IdUser'],
+        RolPaciente = data['RolPaciente'],
+        RolDoctor = data['RolDoctor'],
+        RolFamiliar = data['RolFamiliar'],
+    )
+    s_sesion.add(roles)
+    s_sesion.commit()
+    result = {
+        'error': None,
+        'data': roles.to_dict(),
+        'status': 'success',
+        'message': 'roles asginados con exito',
+        'code': 201
+    }
+    return jsonify(result)
+
+#Login de los Usuarios
 @app.route('/login', methods=['POST'])
 def login():
     s = session()
@@ -170,6 +243,32 @@ def login():
             'code': 404
         }
     return jsonify(result)
+
+
+# Manda los roles del usuario que se consulta por medio del id
+@app.route('/roles', methods=['POST'])
+def roles():
+    s = session()
+    data = request.json
+    roles = s.query(Roles).filter(Roles.IdUser == data['IdUser']).first()
+    if roles:
+        result  = {
+            'error': None,
+            'roles': roles.to_dict(),
+            'status': 'success',
+            'message': 'Roles enviados con exito',
+            'code': 200
+        }
+    else:
+        result = {
+            'error': 'Usuario no encontrado',
+            'roles': None,
+            'status': 'error',
+            'message': 'Usuario no encontrado',
+            'code': 404
+        }
+    return jsonify(result)
+
 
 #Enlista los pacientes de un Familiar
 @app.route('/getPacientesByFamiliar/<id>', methods=['GET'])
@@ -200,7 +299,6 @@ def get_pacientes_by_familiar(id):
 def familiares():
     s = session()
     li_familiares = s.query(Familiar).all()
-
     result_list = []
     for familiar in li_familiares:
         result_list.append(familiar.to_dict())
@@ -217,8 +315,60 @@ def familiares():
         'message': 'Familiares recuperados con exito',
         'code': 200
     }
-
     return jsonify(result)
+
+#ultima Consulta reliazada al paciente de Revision Cardiaca
+@app.route('/RevisionCardiaca/ultimasesion', methods=['POST'])
+def revisioncardiacaUltimasesion():
+    s = session()
+    data = request.json
+    revisionList = s.query(RevisionCardiaca).filter(RevisionCardiaca.IdRevisionCa == data['IdRevisionCa']).all()
+    if revisionList:
+        revision = revisionList[len(revisionList) - 1]
+        result  = {
+            'error': None,
+            'revisioncardiaca': revision.to_dict(),
+            'status': 'success',
+            'message': 'revision enviada con exito',
+            'code': 200
+        }
+    else:
+        result = {
+            'error': 'revision cardiaca no encontrada',
+            'revisioncardiaca': None,
+            'status': 'error',
+            'message': 'revision cardiaca no encontrada',
+            'code': 404
+        }
+    return jsonify(result)
+        
+# ultima consulta realizada al paciente
+
+
+
+@app.route('/consulta/ultimasesion', methods=['GET'])
+def consultaultimasesion():
+    s = session()
+    li_familiares = s.query(Consulta).all()
+    result_list = []
+    for familiar in li_familiares:
+        result_list.append(familiar.to_dict())
+
+    result_familiares = {
+        'familiares': result_list,
+        'total': len(li_familiares),
+    }
+
+    result = {
+        'error': None,
+        'data': result_familiares,
+        'status': 'success',
+        'message': 'Familiares recuperados con exito',
+        'code': 200
+    }
+    return jsonify(result)
+
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=4000)
