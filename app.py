@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models.User import User, Paciente, Familiar, Pariente, Roles, Doctor, RevisionCardiaca, Consulta
+from models.User import User, Paciente, Familiar, Pariente, RevisionCardiaca, Consulta, Roles, Doctor, RevisionCardiaca, Consulta
 from datetime import datetime
 # Creamos el local host para para poder utilizar la API
 
@@ -367,8 +367,6 @@ def consultaultimasesion():
         'code': 200
     }
     return jsonify(result)
-
-
 
 if __name__ == '__main__':
     app.run(debug=True, port=4000)
