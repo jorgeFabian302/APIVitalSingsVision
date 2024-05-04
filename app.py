@@ -115,7 +115,7 @@ def pacientes():
 
     result = {
         'error': None,
-        'data': result_pacientes,
+        'listpatient': result_pacientes,
         'status': 'success',
         'message': 'Pacientes recuperados con exito',
         'code': 200
@@ -156,6 +156,22 @@ def create_paciente():
         'code': 201
     }
     return jsonify(result)
+
+
+# Muestra un doctor por ID
+@app.route('/doctor/<id>', methods=['GET'])
+def doctor(id):
+    s = session()
+    doctoru = s.query(Doctor).filter(Doctor.IdDoctor == id).first()
+    result = {
+        'error' : None, 
+        'doctor' : doctoru.to_dict(),
+        'status' : 'success',
+        'message' : 'doctor recuperado con exito', 
+        'code' : 200
+    }
+    return jsonify(result)
+
 
 # Crea un usuario doctor
 @app.route('/Doctor/Insert', methods=['POST'])
@@ -327,7 +343,7 @@ def revisioncardiacaUltimasesion():
         revision = revisionList[len(revisionList) - 1]
         result  = {
             'error': None,
-            'revisioncardiaca': revision.to_dict(),
+            'revisionCardiaca': revision.to_dict(),
             'status': 'success',
             'message': 'revision enviada con exito',
             'code': 200
@@ -335,7 +351,7 @@ def revisioncardiacaUltimasesion():
     else:
         result = {
             'error': 'revision cardiaca no encontrada',
-            'revisioncardiaca': None,
+            'revisionCardiaca': None,
             'status': 'error',
             'message': 'revision cardiaca no encontrada',
             'code': 404
@@ -343,31 +359,27 @@ def revisioncardiacaUltimasesion():
     return jsonify(result)
         
 # ultima consulta realizada al paciente
-@app.route('/consulta/ultimasesion', methods=['POST'])
+@app.route('/consultas', methods=['POST'])
 def consultaultimasesion():
     s = session()
     data = request.json
-    consultaList = s.query(Consulta).filter(Consulta.IdFPaciente == data['IdFPaciente']).all()
-    if consultaList:
-        ulitmaconsulta = consultaList[len(consultaList) - 1]
-        result  = {
-            'error': None,
-            'consulta': ulitmaconsulta.to_dict(),
-            'status': 'success',
-            'message': 'consulta enviada con exito',
-            'code': 200
-        }
-    else:
-        result = {
-            'error': 'consulta no encontrada',
-            'consulta': None,
-            'status': 'error',
-            'message': 'consulta no encontrada',
-            'code': 404
-        }
+    li_consultas = s.query(Consulta).filter(Consulta.IdFPaciente == data['IdFPaciente']).all()
+    result_list = []
+    for consulta in li_consultas:
+        result_list.append(consulta.to_dict())
+        
+    result_pacientes = {
+        'consultas': result_list,
+        'total': len(li_consultas),
+    }
+    result = {
+        'error': None,
+        'listconsults': result_pacientes,
+        'status': 'success',
+        'message': 'consultas recuperadas con exito',
+        'code': 200
+    }
     return jsonify(result)
-
-
 
 if __name__ == '__main__':
     app.run(debug=True, port=4000)
