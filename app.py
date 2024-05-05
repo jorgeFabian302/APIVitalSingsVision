@@ -334,33 +334,33 @@ def familiares():
     return jsonify(result)
 
 #ultima Consulta reliazada al paciente de Revision Cardiaca
-@app.route('/RevisionCardiaca/ultimasesion', methods=['POST'])
+@app.route('/consulta/ultimasesion', methods=['POST'])
 def revisioncardiacaUltimasesion():
     s = session()
     data = request.json
-    revisionList = s.query(RevisionCardiaca).filter(RevisionCardiaca.IdRevisionCa == data['IdRevisionCa']).all()
+    revisionList = s.query(Consulta).filter(Consulta.IdFPaciente == data['IdFPaciente']).all()
     if revisionList:
         revision = revisionList[len(revisionList) - 1]
         result  = {
             'error': None,
-            'revisionCardiaca': revision.to_dict(),
+            'consulta': revision.to_dict(),
             'status': 'success',
-            'message': 'revision enviada con exito',
+            'message': 'consulta enviada con exito',
             'code': 200
         }
     else:
         result = {
-            'error': 'revision cardiaca no encontrada',
-            'revisionCardiaca': None,
+            'error': 'consulta no encontrada',
+            'consulta': None,
             'status': 'error',
-            'message': 'revision cardiaca no encontrada',
+            'message': 'consulta no encontrada',
             'code': 404
         }
     return jsonify(result)
         
 # ultima consulta realizada al paciente
 @app.route('/consultas', methods=['POST'])
-def consultaultimasesion():
+def consultas():
     s = session()
     data = request.json
     li_consultas = s.query(Consulta).filter(Consulta.IdFPaciente == data['IdFPaciente']).all()
