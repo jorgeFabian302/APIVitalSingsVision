@@ -1,3 +1,8 @@
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+import json
+import os
 from flask import Flask, jsonify, request
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -380,6 +385,299 @@ def consultas():
         'code': 200
     }
     return jsonify(result)
+
+# Inserccion de una consulta
+@app.route('/consulta/insert', methods=['POST'])
+def insert_consult():
+    s_sesion = session()
+    data = request.json()
+    date_consult = data['FechaConsulta']
+    date_consult = datetime.strftime(date_consult, '%Y-%m-%d')
+    
+    consulta = Consulta(
+        IdConsulta = data['IdConsulta'],
+        FechaConsulta = date_consult,
+        HoraConsulta = data['HoraConsulta'],
+        IdFDoctor = data['IdFDoctor'],
+        IdFPaciente = data['IdFPaciente'],
+        IdFRevisionCa = data['IdFRevisionCa'],
+        Estado = data['Estado'],
+        FrecuenciaCardiaca = data['FrecuenciaCardiaca']
+    )
+    s_sesion.add(consulta)
+    s_sesion.commit()
+    result = {
+        'error': None,
+        'consulta': consulta.to_dict,
+        'status' : 'success',
+        'message' : 'Consulta creada con exito',
+    }
+    
+    return jsonify(result)
+
+# Inserccion de revisioncardiaca
+@app.route('/revisioncardiaca/insert', methods=['POST'])
+def insert_revision_cardiaca():
+    s_sesion = session()
+    data = request.json()
+    # Directorio donde se contiene la imagen ECG
+    IdPaciente =  data['IdPaciente']
+    IdRevisionCa = data['IdRevisionCa']
+    DirectoryECG =  "static" + chr(92) + "images" + chr(92) + IdPaciente + chr(92) + IdRevisionCa
+    # Lista de los nombres de las imagenes que se encuentran dentro del directorio
+    image_files = [f for f in os.listdir(DirectoryECG) if f.endswith('.png') or f.endswith('.jpg')]
+    if image_file is None or image_file == "":
+        return jsonify({
+            'error': 'imagen no encontrada',
+            'revisionCardiaca': '',
+            'message': 'imagen no encontrada',
+            'code': 400
+        })
+    # Iteramos en la lista de imagenes obtenidas
+    for image_file in image_files:
+        # Cargamos la imagen del  ECG
+        img = cv2.imread(os.path.join(DirectoryECG, image_file))
+        # Convertimos la imagen a escala de grises
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # Aplicamos umbralización para resaltar las líneas verdes
+        _, thresh = cv2.threshold(gray, 50, 255, cv2.THRESH_BINARY)
+        # Encontramos contornos en la imagen umbralizada
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # Filtramos  los contornos por el color verde
+        green_contours = []
+        # Iteramos dentro de la lista de los contornos obtenidos
+        for contour in contours:
+            # Obtenemos el promedio del color en el contorno
+            mask = np.zeros(gray.shape, dtype=np.uint8)
+            cv2.drawContours(mask, [contour], -1, 255, thickness=cv2.FILLED)
+            mean_color = cv2.mean(img, mask=mask)[:3]  # Canal BGR
+            # Comprovamos si el color esta dentro del rango verde
+            if mean_color[1] > mean_color[0] and mean_color[1] > mean_color[2]:
+                green_contours.append(contour)
+        # Aproximamos los contornos para adelgazar las líneas
+        approx_green_contours = [cv2.approxPolyDP(contour, epsilon=0.5, closed=True) for contour in green_contours]
+        # Dibujamos los contornos en la imagen original
+        cv2.drawContours(img, approx_green_contours, -1, (0, 255, 0), thickness=2)
+        # Creamos una imagen con transparencia del mismo tamaño que la original
+        contour_img = np.zeros((img.shape[0], img.shape[1], 4), dtype=np.uint8)
+        # Dibujamos contornos en la imagen con transparencia
+        cv2.drawContours(contour_img, approx_green_contours, -1, (0, 255, 0, 255), thickness=cv2.FILLED)
+        # Guardamos la imagen del contorno en un archivo con canal alfa
+        cv2.imwrite(os.path.join(DirectoryECG, image_file), contour_img)
+        # Mostramos la imagen con contornos resaltados
+        #cv2.imshow('Contornos verdes', img)
+        #cv2.waitKey(0)
+        #cv2.destroyAllWindows()
+
+        # Mostramos la imagen contorno.png utilizando OpenCV
+        #cv2.imshow('Contorno', contour_img)
+        #cv2.waitKey(0)
+        #cv2.destroyAllWindows()
+        # Leemos la imagen del contorno guardada
+        contour_img = cv2.imread('IMG\RECORTE_3.png', cv2.IMREAD_UNCHANGED)
+
+        # Convertir la imagen a RGB para ser compatible con Matplotlib
+        contour_img_rgb = cv2.cvtColor(contour_img, cv2.COLOR_BGRA2RGBA)
+        # Invertimos la imagen
+        # contour_img_rgb = np.flipud(contour_img_rgb) #Invierte el eje Y de la imagen
+        # Se aplica un filtro blur para quitar un poco el ruido
+        filtered_mask = cv2.medianBlur(contour_img_rgb, 5)
+        # Guardamos la imagen del contorno en un archivo con canal alfa
+        cv2.imwrite('IMG\RECORTE_3.png', filtered_mask)
+         # Leemos la imagen del contorno guardada
+        contour_img = cv2.imread('static/images/electrocardiograms/JS_1_1.png', cv2.IMREAD_UNCHANGED)
+        # definimos el color a buscar (verde)
+        green = np.array([0, 255, 0, 255], dtype=np.uint8)
+        # Encontramos la coordenadas de x y y en los pixeles verdes
+        y_coords, x_coords = np.where(np.all(contour_img == green, axis=-1))
+        # imprimimos las coordenadas
+        # print("X values:", x_coords)
+        # print("Y values:", y_coords)
+        # Encontramos los valores minimo y maximo de y para cada valor de x
+        min_y = {}
+        max_y = {}
+        for x, y in zip(x_coords, y_coords):
+            if x not in min_y or y < min_y[x]:
+                min_y[x] = y
+            if x not in max_y or y > max_y[x]:
+                max_y[x] = y
+        # Encontramos la posicion de la coordenada inferior y en la matriz de y_coords
+        # coordenada y mas baja
+        lower_y = min(y_coords)  
+        lower_y_pos = np.where(y_coords == lower_y)[0][0]
+        # Encontramos la posicion de X de la corrdenada Y más baja
+        lower_x_pos = x_coords[lower_y_pos]  # coordenada x de la coordenada y mas baja
+        # Encontramos el punto inicial de ECG
+        first_point = (min(x_coords), min_y[min(x_coords)])
+        # Buscamos el ultimo punto del ECG
+        final_point = (max(x_coords), max_y[max(x_coords)])
+        # Buscamos el punto más alto entre el primer y punto más bajo
+        QSignal = (lower_x_pos, max_y[lower_x_pos])
+        # Obtenemos el numero de punto x entre el primer punto y el punto inferior
+        x_between = np.where((x_coords > first_point[0]) & (x_coords < lower_x_pos))
+         # iteramos en x_between hacia la derecha y obtenemos la coordenada del valor más alto de y
+        for i in range(x_between[0].shape[0]):
+            if y_coords[x_between[0][i]] > QSignal[1]:
+                QSignal = (x_coords[x_between[0][i]], y_coords[x_between[0][i]])
+        # Encontramos el punto más alto entre el punto inferior y el final
+        QSignal2 = (lower_x_pos, max_y[lower_x_pos])
+        # Obtenemos las x entre el punto inferior y el punto final
+        x_between2 = np.where((x_coords > lower_x_pos) & (x_coords < final_point[0]))
+        # Obtenemos el punto medio del rango X_between2
+        midpoint = lower_x_pos + (final_point[0] - lower_x_pos) // 2
+         # obtenemosel numero de x entre el punto inferior y el punto medio
+        x_between2_first_half = np.where((x_coords > lower_x_pos) & (x_coords < midpoint))
+        # Iteramos en x_between2_first_half recorriendo los puntos hacia la derecha para obtener la coordenada del valor superior de Y
+        for i in range(x_between2_first_half[0].shape[0]):
+            if y_coords[x_between2_first_half[0][i]] > QSignal2[1]:
+                QSignal2 = (x_coords[x_between2_first_half[0][i]], y_coords[x_between2_first_half[0][i]])
+        # Buscamos el punto más bajo ente Qsignal 2 y el punto final
+        lower_point_startQ = (QSignal2[0], max_y[QSignal2[0]])
+        # Obtenemos el numero de x ente QSignal2 y el punto final
+        x_between2_second_half = np.where((x_coords > QSignal2[0]) & (x_coords < final_point[0]))
+        # Iteramos en x_between2_second_half hacia la derecha y obtenemos el valor inferior de y
+        for i in range(x_between2_second_half[0].shape[0]):
+            if y_coords[x_between2_second_half[0][i]] < lower_point_startQ[1]:
+                lower_point_startQ = (x_coords[x_between2_second_half[0][i]], y_coords[x_between2_second_half[0][i]])
+        # Encontramos el punto inferior entre el punto inicial y las coordenas de QSignal
+        lower_point_startP = (first_point[0], max_y[first_point[0]])
+        # Obtenemos el numero de x entre el punto de inicio y QSignal dividido entre 2
+        x_between3 = np.where((x_coords > first_point[0]) & (x_coords < QSignal[0]))
+        midpoint2 = first_point[0] + (QSignal[0] - first_point[0]) // 2
+        # Obtenemos el numero de x entre el punto inicial y el punto medio
+        x_between3_first_half = np.where((x_coords > first_point[0]) & (x_coords < midpoint2))
+        # Iteramos en x_between3_first_half hacia la derecha y obtenemos el valor inferior de y
+        for i in range(x_between3_first_half[0].shape[0]):
+            if y_coords[x_between3_first_half[0][i]] < lower_point_startP[1]:
+                lower_point_startP = (x_coords[x_between3_first_half[0][i]], y_coords[x_between3_first_half[0][i]])
+        # Crea un diagrama de dispersión de los valores x e y
+        # plt.scatter(x_coords, y_coords, s=1)
+        # Invertimos el eje de la y
+        # plt.gca().invert_yaxis()
+        #Traza los puntos primero, inferior y final
+        # plt.plot(first_point[0], first_point[1], 'co', label='First')
+        # plt.plot(lower_x_pos, lower_y, 'ko', label='R')
+        # plt.plot(final_point[0], final_point[1], 'bo', label='Final')
+        # plt.plot(QSignal[0], QSignal[1], 'ro', label='Q')
+        # plt.plot(QSignal2[0], QSignal2[1], 'go', label='S')  # ONDA S
+        # plt.plot(lower_point_startQ[0], lower_point_startQ[1], 'yo', label='T')
+        # plt.plot(lower_point_startP[0], lower_point_startP[1], 'mo', label='P')
+        # Mandamos los datos obtenidos a la db
+        revisioncardiaca = RevisionCardiaca(
+            IdRevisionCa = data['IdRevisionCa'],
+            imgFrecuencia = IdRevisionCa + '.png',
+            PrimerPuntoX = float(int(first_point[0])),
+            PrimerPuntoY = float(int(first_point[1])),
+            PuntoMasAltoX = float(int(lower_x_pos)),
+            PuntoMasAltoY = float(int(lower_y)),
+            PuntoFinalX = float(int(final_point[0])),
+            PuntoFinalY	= float(int(final_point[1])),
+            QSignalX = float(int(QSignal[0])),
+            QSignalY = float(int(QSignal[1])),
+            SSignalX = float(int(QSignal2[0])),
+            SSignalY = float(int(QSignal2[1])),
+            TSignalX = float(int(lower_point_startQ[0])),
+            TSignalY = float(int(lower_point_startQ[1])),
+            PSignalX = float(int(lower_point_startP[0])),
+            PSignalY = float(int(lower_point_startP[1])),
+        )
+        s_sesion.add(revisioncardiaca)
+        s_sesion.commit()
+        result = {
+        'error': None,
+        'data': revisioncardiaca.to_dict(),
+        'status': 'success',
+        'message': 'revision creada con exito',
+        'code': 201
+        }
+    return jsonify(result)
+
+
+# inserccion de imagen corrspondiente a la lectura del electrocardiograma
+@app.route('/consulta/insertimg', methods=['POST'])
+def insert_consult_img():
+    IdPaciente = request.form.get('IdPaciente', '')
+    IdRevisionCa = request.form.get('IdRevisionCa', '')
+    directory = "static" + chr(92) + "images" + chr(92) + IdPaciente + chr(92) + IdRevisionCa
+    app.config['UPLOAD_FOLDER'] = directory
+    if 'image' not in request.files:
+        return jsonify(
+            {
+                'error': 'No se ha proporcionado ninguna imagen',
+                'message': 'No se ha proporcionado ninguna imagen',
+                'code': 400
+            }), 400
+    image_file = request.files['image']
+    if image_file.filename == '':
+        return jsonify(
+            {'error': 'Nombre de archivo vacío',
+             'message': 'Nombre de archivo vacío',
+             'code': 400
+             }), 400
+    new_filename = request.form.get('new_filename', '')
+    if not new_filename:
+         return jsonify(
+                {
+                    'error': 'Nombre de archivo nuevo no proporcionado',
+                    'message': 'Nombre de archivo nuevo no proporcionado',
+                    'code': 400
+                }), 400
+    new_filename = new_filename + '.png'
+    # Verificamos si existe el directorio del usuario mandado, si no es asi la creamos
+    if not os.path.exists("static" + chr(92) + "images" + chr(92) + IdPaciente):
+        os.makedirs("static" + chr(92) + "images" + chr(92) + IdPaciente)
+    # Verificamos si no se ha hecho el directorio correspondiente a la consulta si no es asi creamos el directorio
+    if not os.path.exists("static" + chr(92) + "images" + chr(92) + IdPaciente + chr(92) + IdRevisionCa):
+        os.makedirs("static" + chr(92) + "images" + chr(92) + IdPaciente + chr(92) + IdRevisionCa)
+    # Guardar la imagen en el directorio corresponddiente
+    image_file.save(os.path.join(app.config['UPLOAD_FOLDER'], new_filename))
+    return jsonify({
+            'error': None,
+            'message': 'imagen anexada con exito',
+            'code': 201
+        }), 201
+   
+
+# inserccion de foto de perfil al usuario
+@app.route('/user/insertimg', methods=['POST'])
+def insert_user_img():
+    IdPaciente = request.form.get('IdPaciente', '')
+    directory = "static" + chr(92) + "images"
+    app.config['UPLOAD_FOLDER'] = directory
+    if 'image' not in request.files:
+        return jsonify(
+            {
+                'error': 'No se ha proporcionado ninguna imagen',
+                'message': 'No se ha proporcionado ninguna imagen',
+                'code': 400
+            }), 400
+    image_file = request.files['image']
+    if image_file.filename == '':
+        return jsonify(
+            {'error': 'Nombre de archivo vacío',
+             'message': 'Nombre de archivo vacío',
+             'code': 400
+             }), 400
+    new_filename = request.form.get('new_filename', '')
+    if not new_filename:
+         return jsonify(
+                {
+                    'error': 'Nombre de archivo nuevo no proporcionado',
+                    'message': 'Nombre de archivo nuevo no proporcionado',
+                    'code': 400
+                }), 400
+    new_filename = new_filename + '.png'
+    # Verificamos si existe el directorio del usuario mandado, si no es asi la creamos
+    if not os.path.exists("static" + chr(92) + "images" + chr(92) + IdPaciente):
+        os.makedirs("static" + chr(92) + "images" + chr(92) + IdPaciente)
+    # Guardar la imagen en el directorio corresponddiente
+    image_file.save(os.path.join(app.config['UPLOAD_FOLDER'], new_filename))
+    return jsonify({
+            'error': None,
+            'message': 'imagen anexada con exito',
+            'code': 201
+        }), 201
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=4000)

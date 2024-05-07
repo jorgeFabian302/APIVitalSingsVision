@@ -179,7 +179,7 @@ class Consulta(Base):
             "IdConsulta" : self.IdConsulta,
             "FechaConsulta" : self.FechaConsulta,
             #"HoraConsulta" : hora_consulta,
-             "HoraConsulta" : self.HoraConsulta,
+            "HoraConsulta" : self.HoraConsulta,
             "IdFDoctor" : self.IdFDoctor,
             "IdFPaciente" : self.IdFPaciente,
             "IdFRevisionCa" : self.IdFRevisionCa,
