@@ -307,7 +307,7 @@ def get_pacientes_by_familiar(id):
 
     result = {
         'error': None,
-        'data': result_pacientes,
+        'listpaciente': result_pacientes,
         'status': 'success',
         'message': 'Pacientes recuperados con exito',
         'code': 200
