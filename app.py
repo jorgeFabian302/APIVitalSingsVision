@@ -390,9 +390,9 @@ def consultas():
 @app.route('/consulta/insert', methods=['POST'])
 def insert_consult():
     s_sesion = session()
-    data = request.json()
+    data = request.json
     date_consult = data['FechaConsulta']
-    date_consult = datetime.strftime(date_consult, '%Y-%m-%d')
+    date_consult = datetime.strptime(date_consult, '%Y-%m-%d')
     
     consulta = Consulta(
         IdConsulta = data['IdConsulta'],
@@ -408,7 +408,6 @@ def insert_consult():
     s_sesion.commit()
     result = {
         'error': None,
-        'consulta': consulta.to_dict,
         'status' : 'success',
         'message' : 'Consulta creada con exito',
     }
@@ -419,24 +418,19 @@ def insert_consult():
 @app.route('/revisioncardiaca/insert', methods=['POST'])
 def insert_revision_cardiaca():
     s_sesion = session()
-    data = request.json()
+    print(request)
+    #data = request.json()
     # Directorio donde se contiene la imagen ECG
-    IdPaciente =  data['IdPaciente']
-    IdRevisionCa = data['IdRevisionCa']
-    DirectoryECG =  "static" + chr(92) + "images" + chr(92) + IdPaciente + chr(92) + IdRevisionCa
+    IdPaciente =  request.form.get('IdPaciente', '')
+    IdRevisionCa = request.form.get('IdRevisionCa', '')
+    DirectoryECG =  "static" + chr(92) + "images" + chr(92) + IdPaciente + chr(92) + 'Consults' + chr(92) + IdRevisionCa
+    app.config['UPLOAD_FOLDER'] = DirectoryECG
     # Lista de los nombres de las imagenes que se encuentran dentro del directorio
-    image_files = [f for f in os.listdir(DirectoryECG) if f.endswith('.png') or f.endswith('.jpg')]
-    if image_file is None or image_file == "":
-        return jsonify({
-            'error': 'imagen no encontrada',
-            'revisionCardiaca': '',
-            'message': 'imagen no encontrada',
-            'code': 400
-        })
+    image_files = [f for f in os.listdir(app.config['UPLOAD_FOLDER']) if f.endswith('.png') or f.endswith('.jpg')]
     # Iteramos en la lista de imagenes obtenidas
     for image_file in image_files:
         # Cargamos la imagen del  ECG
-        img = cv2.imread(os.path.join(DirectoryECG, image_file))
+        img = cv2.imread(os.path.join(app.config['UPLOAD_FOLDER'], image_file))
         # Convertimos la imagen a escala de grises
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         # Aplicamos umbralización para resaltar las líneas verdes
@@ -463,7 +457,7 @@ def insert_revision_cardiaca():
         # Dibujamos contornos en la imagen con transparencia
         cv2.drawContours(contour_img, approx_green_contours, -1, (0, 255, 0, 255), thickness=cv2.FILLED)
         # Guardamos la imagen del contorno en un archivo con canal alfa
-        cv2.imwrite(os.path.join(DirectoryECG, image_file), contour_img)
+        cv2.imwrite(os.path.join(app.config['UPLOAD_FOLDER'], image_file), contour_img)
         # Mostramos la imagen con contornos resaltados
         #cv2.imshow('Contornos verdes', img)
         #cv2.waitKey(0)
@@ -474,7 +468,7 @@ def insert_revision_cardiaca():
         #cv2.waitKey(0)
         #cv2.destroyAllWindows()
         # Leemos la imagen del contorno guardada
-        contour_img = cv2.imread('IMG\RECORTE_3.png', cv2.IMREAD_UNCHANGED)
+        contour_img = cv2.imread('static\images\RECORTE_3.png', cv2.IMREAD_UNCHANGED)
 
         # Convertir la imagen a RGB para ser compatible con Matplotlib
         contour_img_rgb = cv2.cvtColor(contour_img, cv2.COLOR_BGRA2RGBA)
@@ -483,9 +477,9 @@ def insert_revision_cardiaca():
         # Se aplica un filtro blur para quitar un poco el ruido
         filtered_mask = cv2.medianBlur(contour_img_rgb, 5)
         # Guardamos la imagen del contorno en un archivo con canal alfa
-        cv2.imwrite('IMG\RECORTE_3.png', filtered_mask)
+        cv2.imwrite('static\images\RECORTE_3.png', filtered_mask)
          # Leemos la imagen del contorno guardada
-        contour_img = cv2.imread('static/images/electrocardiograms/JS_1_1.png', cv2.IMREAD_UNCHANGED)
+        contour_img = cv2.imread('static\images\electrocardiograms\JS_1_1.png', cv2.IMREAD_UNCHANGED)
         # definimos el color a buscar (verde)
         green = np.array([0, 255, 0, 255], dtype=np.uint8)
         # Encontramos la coordenadas de x y y en los pixeles verdes
@@ -564,7 +558,7 @@ def insert_revision_cardiaca():
         # plt.plot(lower_point_startP[0], lower_point_startP[1], 'mo', label='P')
         # Mandamos los datos obtenidos a la db
         revisioncardiaca = RevisionCardiaca(
-            IdRevisionCa = data['IdRevisionCa'],
+            IdRevisionCa = IdRevisionCa,
             imgFrecuencia = IdRevisionCa + '.png',
             PrimerPuntoX = float(int(first_point[0])),
             PrimerPuntoY = float(int(first_point[1])),
@@ -590,7 +584,7 @@ def insert_revision_cardiaca():
         'message': 'revision creada con exito',
         'code': 201
         }
-    return jsonify(result)
+        return jsonify(result)
 
 
 # inserccion de imagen corrspondiente a la lectura del electrocardiograma
@@ -598,7 +592,7 @@ def insert_revision_cardiaca():
 def insert_consult_img():
     IdPaciente = request.form.get('IdPaciente', '')
     IdRevisionCa = request.form.get('IdRevisionCa', '')
-    directory = "static" + chr(92) + "images" + chr(92) + IdPaciente + chr(92) + IdRevisionCa
+    directory = "static" + chr(92) + "images" + chr(92) + IdPaciente + chr(92) + 'Consults' + chr(92) + IdRevisionCa
     app.config['UPLOAD_FOLDER'] = directory
     if 'image' not in request.files:
         return jsonify(
@@ -626,9 +620,12 @@ def insert_consult_img():
     # Verificamos si existe el directorio del usuario mandado, si no es asi la creamos
     if not os.path.exists("static" + chr(92) + "images" + chr(92) + IdPaciente):
         os.makedirs("static" + chr(92) + "images" + chr(92) + IdPaciente)
+     # Verificamos si no se ha hecho el directorio correspondiente a la consulta si no es asi creamos el directorio
+    if not os.path.exists("static" + chr(92) + "images" + chr(92) + IdPaciente + chr(92) + 'Consults'):
+        os.makedirs("static" + chr(92) + "images" + chr(92) + IdPaciente + chr(92) + 'Consults')
     # Verificamos si no se ha hecho el directorio correspondiente a la consulta si no es asi creamos el directorio
-    if not os.path.exists("static" + chr(92) + "images" + chr(92) + IdPaciente + chr(92) + IdRevisionCa):
-        os.makedirs("static" + chr(92) + "images" + chr(92) + IdPaciente + chr(92) + IdRevisionCa)
+    if not os.path.exists("static" + chr(92) + "images" + chr(92) + IdPaciente + chr(92) + 'Consults' + chr(92) + IdRevisionCa):
+        os.makedirs("static" + chr(92) + "images" + chr(92) + IdPaciente + chr(92) + 'Consults' + chr(92) + IdRevisionCa)
     # Guardar la imagen en el directorio corresponddiente
     image_file.save(os.path.join(app.config['UPLOAD_FOLDER'], new_filename))
     return jsonify({
@@ -636,7 +633,33 @@ def insert_consult_img():
             'message': 'imagen anexada con exito',
             'code': 201
         }), 201
-   
+
+
+# Contar el total de usuarios de que contiene la tabla User
+@app.route('/consult/count', methods=['GET'])
+def count_consults():
+    s_sesion = session()
+    li_consulta = s_sesion.query(Consulta).all()
+    result= {
+        'error': None,
+        'total': len(li_consulta),
+        'code': 200
+    }
+    return jsonify(result)
+
+
+# Contar el total de usuarios de que contiene la tabla User
+@app.route('/revisionca/count', methods=['GET'])
+def count_RevisionCardiac():
+    s_sesion = session()
+    li_revisionca = s_sesion.query(RevisionCardiaca).all()
+    result= {
+        'error': None,
+        'total': len(li_revisionca),
+        'code': 200
+    }
+    return jsonify(result)
+
 
 # inserccion de foto de perfil al usuario
 @app.route('/user/insertimg', methods=['POST'])
